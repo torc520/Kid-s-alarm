@@ -24,13 +24,13 @@ interface AlarmNoteProps {
 }
 
 const UI_DAYS = [
-  { label: '一', value: DayOfWeek.Mon },
-  { label: '二', value: DayOfWeek.Tue },
-  { label: '三', value: DayOfWeek.Wed },
-  { label: '四', value: DayOfWeek.Thu },
-  { label: '五', value: DayOfWeek.Fri },
-  { label: '六', value: DayOfWeek.Sat },
-  { label: '日', value: DayOfWeek.Sun }
+  { label: 'Mon', value: DayOfWeek.Mon },
+  { label: 'Tue', value: DayOfWeek.Tue },
+  { label: 'Wed', value: DayOfWeek.Wed },
+  { label: 'Thu', value: DayOfWeek.Thu },
+  { label: 'Fri', value: DayOfWeek.Fri },
+  { label: 'Sat', value: DayOfWeek.Sat },
+  { label: 'Sun', value: DayOfWeek.Sun }
 ];
 
 export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
@@ -54,12 +54,12 @@ export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
   const [showIcons, setShowIcons] = useState(true); 
   const inputRef = useRef<HTMLInputElement>(null);
   
-  // 日期滑动选择状态
+  // Day Swipe State
   const [isSwipingDays, setIsSwipingDays] = useState(false);
   const [swipeMode, setSwipeMode] = useState<'add' | 'remove' | null>(null);
   const swipedDaysRef = useRef<Set<DayOfWeek>>(new Set());
 
-  // 颜色滑动选择状态
+  // Color Swipe State
   const [isSwipingColors, setIsSwipingColors] = useState(false);
 
   useEffect(() => {
@@ -106,7 +106,7 @@ export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
       nextDays = nextDays.filter(d => d !== day);
     }
     
-    // 始终按照周一到周日的顺序排列
+    // Sort Mon-Sun
     const orderMap = UI_DAYS.reduce((acc, dayObj, idx) => {
       acc[dayObj.value] = idx;
       return acc;
@@ -138,7 +138,6 @@ export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
     }
   };
 
-  // 颜色选择处理
   const handleColorPointerDown = (e: React.PointerEvent, color: string) => {
     e.preventDefault();
     onUpdate({ ...alarm, color });
@@ -177,7 +176,7 @@ export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
               {formatTime(alarm.time)}
             </div>
             <span className="text-[9px] font-bold text-black/40 whitespace-nowrap overflow-hidden tracking-tight truncate">
-              {alarm.repeatDays.length === 0 ? '单次闹钟' : (alarm.repeatDays.length === 7 ? '每天重复' : alarm.repeatDays.join(' '))}
+              {alarm.repeatDays.length === 0 ? 'Once' : (alarm.repeatDays.length === 7 ? 'Daily' : alarm.repeatDays.join(' '))}
             </span>
           </div>
           {alarm.text && (
@@ -199,7 +198,7 @@ export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
   const renderActiveLayer = () => {
     if (!isActive || isDeleteMode) return null;
 
-    // 偏移量：Smile 17, Colors 59, Music 101
+    // Offsets: Smile 17, Colors 59, Music 101
     const caretOffset = showIcons ? 17 : (showColors ? 59 : 101);
 
     return createPortal(
@@ -208,7 +207,7 @@ export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
       >
         <div className="absolute inset-0 bg-black/20 backdrop-blur-[10px] pointer-events-auto" onClick={() => onToggleMenu(null)} />
         
-        {/* 预览区域 */}
+        {/* Preview Area */}
         <div className={`relative flex justify-center z-[6010] 
           ${isLandscape ? 'w-[40%] animate-in slide-in-from-left-12' : 'mt-[15vh] w-full animate-in slide-in-from-top-12'} 
           duration-500`}
@@ -216,13 +215,13 @@ export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
           {renderAlarmContent(true)}
         </div>
 
-        {/* 控制面板 */}
+        {/* Control Panel */}
         <div 
           className={`relative bg-white/70 backdrop-blur-3xl rounded-[40px] shadow-[0_60px_150px_rgba(0,0,0,0.5)] border border-white/80 p-5 pointer-events-auto animate-in duration-500 z-[6010]
             ${isLandscape ? 'w-[450px] max-h-[90vh] overflow-y-auto no-scrollbar slide-in-from-right-12' : 'w-[350px] mb-[4vh] slide-in-from-bottom-12'}`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* 重复日期选择 */}
+          {/* Day Selector */}
           <div className="flex justify-between gap-1 mb-5 touch-none select-none">
             {UI_DAYS.map((day) => {
               const act = alarm.repeatDays.includes(day.value);
@@ -241,7 +240,7 @@ export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
             })}
           </div>
 
-          {/* 功能按钮与输入框 */}
+          {/* Tools & Input */}
           <div className="flex items-center gap-2 mb-2 relative">
             <div className="flex gap-1 shrink-0 relative z-30">
               {[
@@ -264,14 +263,14 @@ export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
                 ref={inputRef}
                 type="text"
                 value={alarm.text}
-                placeholder="在此输入闹钟备注..."
+                placeholder="Label..."
                 onChange={(e) => onUpdate({ ...alarm, text: e.target.value })}
-                className="w-full bg-transparent border-none focus:outline-none text-[14px] font-bold text-gray-800"
+                className="w-full bg-transparent border-none focus:outline-none text-[14px] font-bold text-gray-800 placeholder:text-gray-400"
               />
             </div>
           </div>
 
-          {/* 选择器容器 */}
+          {/* Selector Container */}
           <div className="relative mt-2">
             <div 
               className="absolute -top-[12px] w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[14px] border-b-black/5 transition-all duration-300 ease-out z-10"
@@ -365,8 +364,6 @@ export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
       onClick={(e) => {
         e.stopPropagation();
         if (isDeleteMode) onDelete();
-        // 如果正在拖拽或者刚刚拖拽结束，Timeline 会处理，这里主要处理点击打开菜单
-        // 由于 Pointer 事件的处理，这里只在没有发生拖拽时触发（由父组件状态决定或简单处理）
         else if (!isDragging) onToggleMenu(isActive ? null : alarm.id);
       }}
     >

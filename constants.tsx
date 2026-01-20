@@ -49,15 +49,15 @@ export const INITIAL_PALETTE: PaletteNote[] = [
 ];
 
 export const RINGTONES = [
-  { name: '默认铃声', duration: '0:15' },
-  { name: '清晨鸟鸣', duration: '0:30' },
-  { name: '舒缓钢琴', duration: '1:00' },
-  { name: '动感贝斯', duration: '0:45' },
-  { name: '电子合成', duration: '0:20' },
-  { name: '森林风声', duration: '2:00' },
-  { name: '海浪拍岸', duration: '1:30' },
-  { name: '闹钟铃音1', duration: '0:12' },
-  { name: '闹钟铃音2', duration: '0:18' }
+  { name: 'Default', duration: '0:15' },
+  { name: 'Morning Birds', duration: '0:30' },
+  { name: 'Soft Piano', duration: '1:00' },
+  { name: 'Funky Bass', duration: '0:45' },
+  { name: 'Synth', duration: '0:20' },
+  { name: 'Forest Wind', duration: '2:00' },
+  { name: 'Ocean Waves', duration: '1:30' },
+  { name: 'Beep 1', duration: '0:12' },
+  { name: 'Beep 2', duration: '0:18' }
 ];
 
 export const ICON_MAP: Record<string, any> = {

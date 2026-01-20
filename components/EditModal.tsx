@@ -32,7 +32,7 @@ export const EditModal: React.FC<EditModalProps> = ({ alarm, onClose, onSave }) 
       >
         {/* Header */}
         <div className="p-4 flex items-center justify-between border-b border-black/5">
-          <h3 className="text-gray-500 font-bold text-sm">编辑事项</h3>
+          <h3 className="text-gray-500 font-bold text-sm">Edit Note</h3>
           <button onClick={onClose} className="p-1 hover:bg-black/5 rounded-full transition-colors">
             <X size={20} className="text-gray-400" />
           </button>
@@ -44,7 +44,7 @@ export const EditModal: React.FC<EditModalProps> = ({ alarm, onClose, onSave }) 
             ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="在这里输入具体事项..."
+            placeholder="Type your note here..."
             className="w-full h-48 bg-transparent text-xl font-medium text-gray-800 placeholder:text-gray-400 focus:outline-none resize-none leading-relaxed"
           />
         </div>
@@ -55,14 +55,14 @@ export const EditModal: React.FC<EditModalProps> = ({ alarm, onClose, onSave }) 
             onClick={onClose}
             className="px-6 py-2.5 rounded-2xl font-bold text-gray-500 hover:bg-black/5 transition-colors"
           >
-            取消
+            Cancel
           </button>
           <button 
             onClick={handleSave}
             className="px-8 py-2.5 bg-sky-500 text-white rounded-2xl font-bold shadow-lg shadow-sky-200 hover:bg-sky-600 active:scale-95 transition-all flex items-center gap-2"
           >
             <Check size={20} />
-            保存
+            Save
           </button>
         </div>
       </div>

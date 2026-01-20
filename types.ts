@@ -1,12 +1,12 @@
 
 export enum DayOfWeek {
-  Mon = '周一',
-  Tue = '周二',
-  Wed = '周三',
-  Thu = '周四',
-  Fri = '周五',
-  Sat = '周六',
-  Sun = '周日'
+  Mon = 'Mon',
+  Tue = 'Tue',
+  Wed = 'Wed',
+  Thu = 'Thu',
+  Fri = 'Fri',
+  Sat = 'Sat',
+  Sun = 'Sun'
 }
 
 export interface Alarm {

@@ -8,7 +8,7 @@ import { Alarm, DayOfWeek, PaletteNote } from './types';
 import { COLORS, INITIAL_PALETTE, ICON_MAP } from './constants';
 import { Bell, BellOff, Music } from 'lucide-react';
 
-// Web Audio API 上下文，确保单例
+// Web Audio API Singleton
 let audioContext: AudioContext | null = null;
 let oscillator: OscillatorNode | null = null;
 
@@ -24,11 +24,11 @@ const App: React.FC = () => {
   const [is12HourMode, setIs12HourMode] = useState(true);
   const timelineRef = useRef<TimelineHandle>(null);
 
-  // --- 闹钟响铃逻辑 ---
+  // --- Ringing Logic ---
   const [ringingAlarm, setRingingAlarm] = useState<Alarm | null>(null);
   const timerRef = useRef<number | null>(null);
 
-  // 播放声音 (模拟电子闹钟声)
+  // Play Sound (Simulated Electronic Alarm)
   const playAlarmSound = useCallback(() => {
     try {
       if (!audioContext) {
@@ -38,7 +38,7 @@ const App: React.FC = () => {
         audioContext.resume();
       }
       
-      // 如果已经在响，先停止
+      // Stop if already playing
       if (oscillator) {
         try { oscillator.stop(); } catch(e) {}
         oscillator = null;
@@ -51,7 +51,7 @@ const App: React.FC = () => {
       oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4
       oscillator.frequency.setValueAtTime(880, audioContext.currentTime + 0.5); // A5
 
-      // 模拟“滴-滴-滴”的音量包络
+      // "Beep-Beep-Beep" Envelope
       gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
       gainNode.gain.setValueAtTime(0, audioContext.currentTime + 0.1);
       gainNode.gain.setValueAtTime(0.5, audioContext.currentTime + 0.2);
@@ -75,24 +75,24 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // 闹钟检测循环
+  // Alarm Check Loop
   useEffect(() => {
     const checkAlarms = () => {
       const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
       const currentSeconds = now.getSeconds();
-      const dayMap = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+      const dayMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const currentDayStr = dayMap[now.getDay()];
 
-      // 只有在秒数为 0 时触发，避免一分钟内重复触发
+      // Only trigger at 0 seconds
       if (currentSeconds !== 0) return;
 
-      // 查找符合条件的闹钟
+      // Find matching alarms
       const found = alarms.find(alarm => {
-        // 1. 时间匹配
+        // 1. Time match
         if (alarm.time !== currentMinutes) return false;
         
-        // 2. 日期匹配
+        // 2. Day match
         if (alarm.repeatDays.length === 0) {
            return true; 
         } else {
@@ -104,30 +104,29 @@ const App: React.FC = () => {
       if (found && !ringingAlarm) {
         setRingingAlarm(found);
         
-        // 循环播放声音
+        // Loop sound
         const loopSound = () => {
              playAlarmSound();
         };
         loopSound();
-        // 设置一个定时器每秒响一次，模拟持续铃声
+        // Set interval to repeat sound every second
         const soundInterval = setInterval(loopSound, 1000);
-        // 将 timer ID 存起来以便停止时清除，这里简单处理挂在 window 上或 ref
+        // Store timer ID to clear later
         (window as any)._alarmSoundInterval = soundInterval;
       }
     };
 
-    // 每秒检查一次
+    // Check every second
     const intervalId = setInterval(checkAlarms, 1000);
     return () => clearInterval(intervalId);
   }, [alarms, ringingAlarm, playAlarmSound]);
 
-  // 定义 handleDeleteAlarm
   const handleDeleteAlarm = useCallback((id: string) => {
     setAlarms(prev => prev.filter(a => a.id !== id));
   }, []);
 
   const handleStopRinging = () => {
-    // 逻辑修改：如果是单次闹钟（没有设置重复日期），停止后自动删除
+    // Logic: Auto delete if single-use (no repeat days)
     if (ringingAlarm && ringingAlarm.repeatDays.length === 0) {
       handleDeleteAlarm(ringingAlarm.id);
     }
@@ -139,7 +138,7 @@ const App: React.FC = () => {
     }
   };
 
-  // --- End 闹钟逻辑 ---
+  // --- End Ringing Logic ---
 
   useEffect(() => {
     const handleResize = () => setIsLandscape(window.innerWidth > window.innerHeight);
@@ -159,7 +158,7 @@ const App: React.FC = () => {
 
   const handleAddAlarm = useCallback((time: number, color: string, label: string, icon?: string) => {
     const newId = Math.random().toString(36).substr(2, 9);
-    const newAlarm: Alarm = { id: newId, time, text: label, color, repeatDays: [], ringtone: '默认铃声', icon, isNew: true };
+    const newAlarm: Alarm = { id: newId, time, text: label, color, repeatDays: [], ringtone: 'Default', icon, isNew: true };
     setAlarms(prev => [...prev, newAlarm]);
   }, []);
 
@@ -195,14 +194,13 @@ const App: React.FC = () => {
     
     if (clientX < screenWidth - paletteWidth) {
       if (timelineRef.current) {
-        // Drop 时启用吸附
+        // Enable snap on drop
         const minutes = timelineRef.current.calculateMinutesFromY(clientY);
         handleAddAlarm(minutes, note.color, note.label, note.icon);
       }
     }
   };
 
-  // 格式化时间辅助函数
   const formatTime = (minutes: number) => {
     const h = Math.floor(minutes / 60);
     const m = Math.floor(minutes % 60);
@@ -248,7 +246,7 @@ const App: React.FC = () => {
       <TrashBin isDeleteMode={isDeleteMode} isLandscape={isLandscape} onToggleDeleteMode={() => setIsDeleteMode(!isDeleteMode)} onDeletePaletteNote={handleDeletePaletteNote} onDeleteAlarm={handleDeleteAlarm} />
       {editingAlarm && <EditModal alarm={editingAlarm} onClose={() => setEditingAlarm(null)} onSave={(u) => { handleUpdateAlarm(u); setEditingAlarm(null); }} />}
 
-      {/* 响铃弹窗 */}
+      {/* Ringing Modal */}
       {ringingAlarm && (
         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-300">
           <div 
@@ -269,7 +267,7 @@ const App: React.FC = () => {
                 <span className="text-2xl ml-1">{formatTime(ringingAlarm.time).split(' ')[1]}</span>
               </div>
               <div className="text-xl font-bold text-black/60">
-                {ringingAlarm.text || "闹钟响了！"}
+                {ringingAlarm.text || "Alarm!"}
               </div>
             </div>
 
@@ -278,11 +276,11 @@ const App: React.FC = () => {
               className="w-full py-4 bg-white text-black font-black text-lg rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
             >
               <BellOff size={24} />
-              停止闹铃
+              Stop
             </button>
           </div>
           <div className="mt-8 text-white/50 text-sm">
-            点击按钮停止声音
+            Tap button to stop
           </div>
         </div>
       )}
