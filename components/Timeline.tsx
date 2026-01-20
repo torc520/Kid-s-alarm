@@ -1,5 +1,5 @@
 
-import React, { useRef, useState, useLayoutEffect } from 'react';
+import React, { useRef, useState, useLayoutEffect, forwardRef, useImperativeHandle } from 'react';
 import { Alarm } from '../types';
 import { TIMELINE_HEIGHT_BASE, TIMELINE_HEIGHT_ZOOMED } from '../constants';
 import { AlarmNote } from './AlarmNote';
@@ -19,9 +19,15 @@ interface TimelineProps {
   setDraggingNote: (note: { color: string; label: string; icon?: string } | null) => void;
   activeMenuId: string | null;
   setActiveMenuId: (id: string | null) => void;
+  is12HourMode: boolean;
+  setIs12HourMode: (v: boolean) => void;
 }
 
-export const Timeline: React.FC<TimelineProps> = ({
+export interface TimelineHandle {
+  calculateMinutesFromY: (clientY: number) => number;
+}
+
+export const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
   alarms,
   zoomLevel,
   setZoomLevel,
@@ -35,20 +41,25 @@ export const Timeline: React.FC<TimelineProps> = ({
   onEditAlarm,
   setDraggingNote,
   activeMenuId,
-  setActiveMenuId
-}) => {
+  setActiveMenuId,
+  is12HourMode,
+  setIs12HourMode
+}, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState<number | null>(null);
   const [movingAlarmId, setMovingAlarmId] = useState<string | null>(null);
   const [lastZoomTargetMinutes, setLastZoomTargetMinutes] = useState<number | null>(null);
 
+  // 防抖动 RAF 引用
+  const rafRef = useRef<number | null>(null);
+
   // 手势缩放相关
   const initialPinchDistance = useRef<number | null>(null);
 
   const hourHeight = zoomLevel === 1 ? TIMELINE_HEIGHT_BASE : TIMELINE_HEIGHT_ZOOMED;
   const totalHeight = 24 * hourHeight;
-  const axisPositionPercent = 7; // 减小比例，使轴线更贴左
+  const axisPositionPercent = 12;
 
   useLayoutEffect(() => {
     if (lastZoomTargetMinutes !== null && containerRef.current) {
@@ -59,25 +70,58 @@ export const Timeline: React.FC<TimelineProps> = ({
     }
   }, [zoomLevel, totalHeight]);
 
-  const calculateMinutesFromY = (clientY: number) => {
+  const calculateMinutesFromY = (clientY: number, snapToGrid = true) => {
     if (!timelineRef.current) return 0;
     const rect = timelineRef.current.getBoundingClientRect();
     const relativeY = clientY - rect.top;
     const minutes = ((relativeY - 50) / totalHeight) * 1440;
-    const snapInterval = zoomLevel === 1 ? 15 : 1;
-    return Math.max(0, Math.min(1440, Math.round(minutes / snapInterval) * snapInterval));
+    
+    if (zoomLevel === 1) {
+       // 缩小模式：始终吸附 15 分钟
+       if (snapToGrid) return Math.max(0, Math.min(1440, Math.round(minutes / 15) * 15));
+       return Math.max(0, Math.min(1440, minutes));
+    } else {
+       // 放大模式：
+       // 如果 snapToGrid 为 true (Drop 或外部调用)，吸附到整数分钟
+       // 如果 snapToGrid 为 false (Drag 过程中)，不吸附，返回浮点数，实现平滑移动
+       if (snapToGrid) {
+         return Math.max(0, Math.min(1440, Math.round(minutes)));
+       }
+       return Math.max(0, Math.min(1440, minutes));
+    }
   };
+
+  useImperativeHandle(ref, () => ({
+    calculateMinutesFromY: (y) => calculateMinutesFromY(y, true)
+  }));
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    const snappedMinutes = calculateMinutesFromY(e.clientY);
-    setIsHovering(snappedMinutes);
-    if (movingAlarmId) onMoveAlarm(movingAlarmId, snappedMinutes);
+    const clientY = e.clientY;
+
+    if (rafRef.current) return;
+
+    rafRef.current = requestAnimationFrame(() => {
+        const shouldSnap = zoomLevel === 1;
+        const minutes = calculateMinutesFromY(clientY, shouldSnap);
+        
+        setIsHovering(minutes);
+        if (movingAlarmId) onMoveAlarm(movingAlarmId, minutes);
+        
+        rafRef.current = null;
+    });
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const dropMinutes = calculateMinutesFromY(e.clientY);
+    
+    // 关键修复：取消尚未执行的渲染帧，防止虚线重现
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+
+    const dropMinutes = calculateMinutesFromY(e.clientY, true);
     setIsHovering(null);
 
     if (movingAlarmId) {
@@ -98,7 +142,15 @@ export const Timeline: React.FC<TimelineProps> = ({
     setDraggingNote(null);
   };
 
-  // --- 手势缩放处理 ---
+  const handleDragLeave = () => {
+    // 关键修复：取消尚未执行的渲染帧
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    setIsHovering(null);
+  };
+
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       const dist = Math.hypot(
@@ -118,15 +170,13 @@ export const Timeline: React.FC<TimelineProps> = ({
       const ratio = currentDist / initialPinchDistance.current;
 
       if (ratio > 1.25 && zoomLevel === 1) {
-        // 放大
         const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-        setLastZoomTargetMinutes(calculateMinutesFromY(midY));
+        setLastZoomTargetMinutes(calculateMinutesFromY(midY, false));
         setZoomLevel(2);
-        initialPinchDistance.current = currentDist; // 重置以防连续触发
+        initialPinchDistance.current = currentDist; 
       } else if (ratio < 0.75 && zoomLevel === 2) {
-        // 缩小
         const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-        setLastZoomTargetMinutes(calculateMinutesFromY(midY));
+        setLastZoomTargetMinutes(calculateMinutesFromY(midY, false));
         setZoomLevel(1);
         initialPinchDistance.current = currentDist;
       }
@@ -135,6 +185,27 @@ export const Timeline: React.FC<TimelineProps> = ({
 
   const handleTouchEnd = () => {
     initialPinchDistance.current = null;
+  };
+
+  const formatHourLabel = (hour: number) => {
+    if (!is12HourMode) return hour.toString().padStart(2, '0');
+    const val = hour % 12;
+    if (val === 0) {
+      return hour === 12 ? '12' : '0';
+    }
+    return val.toString();
+  };
+
+  const formatPreviewTime = (minutes: number) => {
+    const h = Math.floor(minutes / 60);
+    const m = Math.floor(minutes % 60);
+    const mStr = m.toString().padStart(2, '0');
+    if (!is12HourMode) {
+      return `${h.toString().padStart(2, '0')}:${mStr}`;
+    }
+    const suffix = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${mStr} ${suffix}`;
   };
 
   const sortedAlarms = [...alarms].sort((a, b) => a.time - b.time);
@@ -151,13 +222,13 @@ export const Timeline: React.FC<TimelineProps> = ({
       className={`flex-1 h-full overflow-y-auto no-scrollbar bg-sky-100/30 py-4 pl-1 relative scroll-smooth touch-none ${isLandscape ? 'pr-48' : 'pr-12'}`}
       style={{ touchAction: 'pan-y pinch-zoom' }}
       onDoubleClick={(e) => {
-        setLastZoomTargetMinutes(calculateMinutesFromY(e.clientY));
+        setLastZoomTargetMinutes(calculateMinutesFromY(e.clientY, false));
         onTimelineDoubleClick();
       }}
       onClick={() => setActiveMenuId(null)}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      onDragLeave={() => setIsHovering(null)}
+      onDragLeave={handleDragLeave}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -170,11 +241,53 @@ export const Timeline: React.FC<TimelineProps> = ({
         <div className="absolute w-1 bg-gray-300 rounded-full" style={{ left: `${axisPositionPercent}%`, top: '50px', bottom: '50px' }} />
         
         {Array.from({ length: 25 }).map((_, i) => (
-          <div key={i} className="absolute left-0 w-full flex items-center" style={{ top: `${i * hourHeight + 50}px`, transform: 'translateY(-50%)' }}>
-            <span className="text-[10px] font-bold text-gray-400 text-right pr-2" style={{ width: `${axisPositionPercent}%` }}>{i.toString().padStart(2, '0')}</span>
-            <div className={`rounded-full z-10 ${zoomLevel === 1 ? 'w-1.5 h-1.5 bg-gray-300' : 'w-2.5 h-2.5 bg-gray-400'}`} />
-            <div className="flex-1 border-t border-gray-200 border-dashed ml-2 opacity-40" />
-          </div>
+          <React.Fragment key={i}>
+            <div className="absolute left-0 w-full flex items-center" style={{ top: `${i * hourHeight + 50}px`, transform: 'translateY(-50%)' }}>
+              <div className="flex items-center justify-end pr-3 gap-1 relative" style={{ width: `${axisPositionPercent}%` }}>
+                <span className={`font-bold transition-all duration-300 ${
+                  i === 12 
+                    ? 'text-sky-600 text-[14px]' 
+                    : (i % 12 === 0 ? 'text-gray-500 text-[12px]' : 'text-gray-400 text-[12px]')
+                }`}>
+                  {formatHourLabel(i)}
+                </span>
+                
+                {i === 12 && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIs12HourMode(!is12HourMode);
+                    }}
+                    className="absolute -right-7 bg-sky-100 text-sky-600 text-[8px] font-black px-1 py-0.5 rounded border border-sky-200 hover:bg-sky-200 active:scale-95 transition-all"
+                  >
+                    {is12HourMode ? '24H' : 'PM'}
+                  </button>
+                )}
+              </div>
+
+              <div className={`rounded-full z-10 transition-all ${
+                i === 12 ? 'w-2 h-2 bg-sky-500 ring-2 ring-sky-200' : (
+                  zoomLevel === 1 ? 'w-1.5 h-1.5 bg-gray-300' : 'w-2 h-2 bg-gray-400'
+                )
+              }`} />
+              
+              <div className="flex-1 border-t border-gray-200 border-dashed ml-2 opacity-40" />
+            </div>
+
+            {zoomLevel > 1 && i < 24 && [10, 20, 30, 40, 50].map(min => (
+              <div 
+                key={`${i}-${min}`}
+                className="absolute left-0 w-full flex items-center" 
+                style={{ top: `${(i * hourHeight) + ((min / 60) * hourHeight) + 50}px`, transform: 'translateY(-50%)' }}
+              >
+                 <div className="flex justify-end pr-3" style={{ width: `${axisPositionPercent}%` }}>
+                   <span className="text-[9px] text-gray-300 font-medium">{min}</span>
+                 </div>
+                 <div className="w-1 h-1 bg-gray-200 rounded-full z-10" />
+                 <div className="flex-1 border-t border-gray-100 border-dashed ml-2 opacity-30" />
+              </div>
+            ))}
+          </React.Fragment>
         ))}
 
         {isHovering !== null && !movingAlarmId && (
@@ -188,7 +301,7 @@ export const Timeline: React.FC<TimelineProps> = ({
             }}
           >
             <span className="text-xl font-black text-sky-600">
-              {(Math.floor(isHovering/60)).toString().padStart(2,'0')}:{(isHovering%60).toString().padStart(2,'0')}
+              {formatPreviewTime(isHovering)}
             </span>
           </div>
         )}
@@ -209,9 +322,10 @@ export const Timeline: React.FC<TimelineProps> = ({
             onDragStarted={() => setMovingAlarmId(alarm.id)}
             onDragEnded={() => setMovingAlarmId(null)}
             topOffset={50}
+            is12HourMode={is12HourMode}
           />
         )))}
       </div>
     </div>
   );
-};
+});

@@ -19,6 +19,7 @@ interface AlarmNoteProps {
   onDragStarted?: () => void;
   onDragEnded?: () => void;
   topOffset?: number;
+  is12HourMode: boolean;
 }
 
 const UI_DAYS = [
@@ -31,7 +32,7 @@ const UI_DAYS = [
   { label: '日', value: DayOfWeek.Sun }
 ];
 
-export const AlarmNote: React.FC<AlarmNoteProps> = ({
+export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
   alarm,
   indexInGroup,
   zoomLevel,
@@ -44,7 +45,8 @@ export const AlarmNote: React.FC<AlarmNoteProps> = ({
   onToggleMenu,
   onDragStarted,
   onDragEnded,
-  topOffset = 0
+  topOffset = 0,
+  is12HourMode
 }) => {
   const [showRingtones, setShowRingtones] = useState(false);
   const [showColors, setShowColors] = useState(false);
@@ -83,7 +85,13 @@ export const AlarmNote: React.FC<AlarmNoteProps> = ({
   const formatTime = (minutes: number) => {
     const h = Math.floor(minutes / 60);
     const m = Math.floor(minutes % 60);
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    const mStr = m.toString().padStart(2, '0');
+    if (!is12HourMode) {
+      return `${h.toString().padStart(2, '0')}:${mStr}`;
+    }
+    const suffix = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${mStr} ${suffix}`;
   };
 
   const toggleDay = (day: DayOfWeek, forceMode?: 'add' | 'remove') => {
@@ -199,7 +207,7 @@ export const AlarmNote: React.FC<AlarmNoteProps> = ({
       >
         <div className="absolute inset-0 bg-black/20 backdrop-blur-[10px] pointer-events-auto" onClick={() => onToggleMenu(null)} />
         
-        {/* 预览区域 - 调整 mt-[8vh] 为 mt-[15vh] 使其在竖屏下位置更低一些 */}
+        {/* 预览区域 */}
         <div className={`relative flex justify-center z-[6010] 
           ${isLandscape ? 'w-[40%] animate-in slide-in-from-left-12' : 'mt-[15vh] w-full animate-in slide-in-from-top-12'} 
           duration-500`}
@@ -264,7 +272,6 @@ export const AlarmNote: React.FC<AlarmNoteProps> = ({
 
           {/* 选择器容器 */}
           <div className="relative mt-2">
-            {/* 去除描边效果的指示箭头 (Caret) - 颜色与边框和下框保持一致 */}
             <div 
               className="absolute -top-[12px] w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[14px] border-b-black/5 transition-all duration-300 ease-out z-10"
               style={{ left: `${caretOffset}px`, transform: 'translateX(-50%)' }}
@@ -274,7 +281,6 @@ export const AlarmNote: React.FC<AlarmNoteProps> = ({
               style={{ left: `${caretOffset}px`, transform: 'translateX(-50%)' }}
             />
 
-            {/* 内容选择列表区域 */}
             <div className="bg-gray-50/60 rounded-3xl border border-black/5 p-4 h-[190px] overflow-hidden shadow-[inset_0_2px_10px_rgba(0,0,0,0.03)] backdrop-blur-sm relative z-25">
               {showIcons && (
                 <div className="h-full overflow-y-auto no-scrollbar grid grid-cols-6 gap-2.5 animate-in fade-in zoom-in-95 duration-300">
@@ -368,4 +374,4 @@ export const AlarmNote: React.FC<AlarmNoteProps> = ({
       {renderActiveLayer()}
     </div>
   );
-};
+});
