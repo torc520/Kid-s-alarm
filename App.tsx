@@ -63,7 +63,6 @@ const App: React.FC = () => {
       gainNode.connect(audioContext.destination);
 
       oscillator.start();
-      // 循环播放逻辑简单实现：实际上这里只是响了一声，为了简单起见，我们用 setInterval 循环调用
     } catch (e) {
       console.error("Audio play failed", e);
     }
@@ -82,9 +81,6 @@ const App: React.FC = () => {
       const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
       const currentSeconds = now.getSeconds();
-      const currentDayIndex = (now.getDay() + 6) % 7; // Convert Sun(0)-Sat(6) to Mon(0)-Sun(6) logic of types if needed, BUT:
-      // UI_DAYS in AlarmNote uses explicit DayOfWeek enum.
-      // DayOfWeek values are string "周一". We need a map.
       const dayMap = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
       const currentDayStr = dayMap[now.getDay()];
 
@@ -98,11 +94,8 @@ const App: React.FC = () => {
         
         // 2. 日期匹配
         if (alarm.repeatDays.length === 0) {
-           // 单次闹钟：这里简化逻辑，只要时间对就响（实际应用可能需要标记已响过）
            return true; 
         } else {
-           // 重复闹钟：检查今天是否在重复列表中
-           // Note: alarm.repeatDays stores values like "周一"
            // @ts-ignore
            return alarm.repeatDays.includes(currentDayStr);
         }
@@ -110,6 +103,7 @@ const App: React.FC = () => {
 
       if (found && !ringingAlarm) {
         setRingingAlarm(found);
+        
         // 循环播放声音
         const loopSound = () => {
              playAlarmSound();
@@ -195,6 +189,7 @@ const App: React.FC = () => {
     
     if (clientX < screenWidth - paletteWidth) {
       if (timelineRef.current) {
+        // Drop 时启用吸附
         const minutes = timelineRef.current.calculateMinutesFromY(clientY);
         handleAddAlarm(minutes, note.color, note.label, note.icon);
       }

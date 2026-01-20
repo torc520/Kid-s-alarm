@@ -16,10 +16,11 @@ interface AlarmNoteProps {
   axisPositionPercent: number;
   isActive: boolean;
   onToggleMenu: (id: string | null) => void;
-  onDragStarted?: () => void;
-  onDragEnded?: () => void;
   topOffset?: number;
   is12HourMode: boolean;
+  // Custom Drag Props
+  isDragging: boolean;
+  onPointerDown: (e: React.PointerEvent, alarm: Alarm) => void;
 }
 
 const UI_DAYS = [
@@ -43,10 +44,10 @@ export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
   axisPositionPercent,
   isActive,
   onToggleMenu,
-  onDragStarted,
-  onDragEnded,
   topOffset = 0,
-  is12HourMode
+  is12HourMode,
+  isDragging,
+  onPointerDown
 }) => {
   const [showRingtones, setShowRingtones] = useState(false);
   const [showColors, setShowColors] = useState(false);
@@ -344,16 +345,11 @@ export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
 
   return (
     <div 
-      draggable={!isActive}
-      onDragStart={(e) => {
-        if (isDeleteMode || isActive) { e.preventDefault(); return; }
-        const img = new Image(); img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-        e.dataTransfer.setDragImage(img, 0, 0);
-        e.dataTransfer.setData('alarm-note', JSON.stringify({ color: alarm.color, label: alarm.text, icon: alarm.icon }));
-        e.dataTransfer.setData('alarm-move', JSON.stringify({ id: alarm.id }));
-        onDragStarted?.();
+      onPointerDown={(e) => {
+        if (!isActive && !isDeleteMode) {
+          onPointerDown(e, alarm);
+        }
       }}
-      onDragEnd={() => onDragEnded?.()}
       className={`absolute transition-all duration-300 ${isDeleteMode ? 'shake cursor-pointer' : 'cursor-grab active:cursor-grabbing'}`}
       style={{ 
         top: `${topPos}px`, 
@@ -363,11 +359,15 @@ export const AlarmNote: React.FC<AlarmNoteProps> = React.memo(({
         width: 'auto',
         maxWidth: isLandscape ? '30%' : '65%',
         minWidth: alarm.text ? (zoomLevel === 1 ? '160px' : '200px') : (zoomLevel === 1 ? '70px' : '90px'),
+        opacity: isDragging ? 0 : (isActive ? 0.3 : 1),
+        touchAction: 'none' // Prevent scrolling while dragging note
       }}
       onClick={(e) => {
         e.stopPropagation();
         if (isDeleteMode) onDelete();
-        else onToggleMenu(isActive ? null : alarm.id);
+        // 如果正在拖拽或者刚刚拖拽结束，Timeline 会处理，这里主要处理点击打开菜单
+        // 由于 Pointer 事件的处理，这里只在没有发生拖拽时触发（由父组件状态决定或简单处理）
+        else if (!isDragging) onToggleMenu(isActive ? null : alarm.id);
       }}
     >
       {renderAlarmContent()}

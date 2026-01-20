@@ -69,8 +69,8 @@ export const TrashBin: React.FC<TrashBinProps> = ({
 
   return (
     <div 
-      className={`fixed bottom-8 z-50 flex flex-col items-center gap-2 transition-all duration-500 ${
-        isLandscape ? 'right-40' : 'left-1/2 -translate-x-1/2'
+      className={`fixed top-6 z-50 flex flex-col items-center gap-2 transition-all duration-500 ${
+        isLandscape ? 'right-40' : 'right-20'
       }`}
     >
       <button 
