@@ -1,0 +1,7 @@
+{
+  "name": "FastDrag Alarm",
+  "description": "A highly intuitive drag-and-drop alarm application featuring a vertical timeline, color-coded notes, and customizable schedules.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
