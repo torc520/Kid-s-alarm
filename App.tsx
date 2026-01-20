@@ -121,7 +121,17 @@ const App: React.FC = () => {
     return () => clearInterval(intervalId);
   }, [alarms, ringingAlarm, playAlarmSound]);
 
+  // 定义 handleDeleteAlarm
+  const handleDeleteAlarm = useCallback((id: string) => {
+    setAlarms(prev => prev.filter(a => a.id !== id));
+  }, []);
+
   const handleStopRinging = () => {
+    // 逻辑修改：如果是单次闹钟（没有设置重复日期），停止后自动删除
+    if (ringingAlarm && ringingAlarm.repeatDays.length === 0) {
+      handleDeleteAlarm(ringingAlarm.id);
+    }
+
     setRingingAlarm(null);
     stopAlarmSound();
     if ((window as any)._alarmSoundInterval) {
@@ -159,10 +169,6 @@ const App: React.FC = () => {
 
   const handleMoveAlarm = useCallback((id: string, newTime: number) => {
     setAlarms(prev => prev.map(a => a.id === id ? { ...a, time: newTime } : a));
-  }, []);
-
-  const handleDeleteAlarm = useCallback((id: string) => {
-    setAlarms(prev => prev.filter(a => a.id !== id));
   }, []);
 
   const handleAddToPalette = (color: string, label: string, index: number, icon?: string) => {
